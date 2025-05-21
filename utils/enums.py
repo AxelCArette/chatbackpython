@@ -1,0 +1,1 @@
+# enums centralisés (role, type, etc.)

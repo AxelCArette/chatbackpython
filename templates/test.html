@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Chat Test</title>
+  <style>
+    li.room {
+      cursor: pointer;
+    }
+
+    li.room.selected {
+      background-color: #d0f0ff;
+      font-weight: bold;
+    }
+
+    #current-room {
+      color: #0077cc;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Test</h1>
+
+  <input id="username" placeholder="Ton prénom"><br><br>
+  <input id="message" placeholder="Ton message">
+  <button onclick="sendMessage()">Envoyer</button><br><br>
+
+  <input id="room-name" placeholder="Nom du salon">
+  <input id="room-users" placeholder="Utilisateurs (séparés par virgule)">
+  <button onclick="createRoom()">Créer un salon</button>
+  <button onclick="getRooms()">Lister les salons</button><br><br>
+
+  <h3 id="current-room">Aucun salon sélectionné</h3>
+
+  <h2>Messages</h2>
+  <ul id="chat"></ul>
+
+  <h2>Salons</h2>
+  <ul id="rooms"></ul>
+
+<script>
+  const socket = new WebSocket("ws://localhost:8888/ws/chat");
+  let currentRoomId = null;
+
+  socket.onopen = () => {
+    console.log("✅ Connecté au WebSocket");
+    getRooms();
+  };
+
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.action === "new_message") {
+      if (data.room_id === currentRoomId) {
+        appendMessage(data.username, data.message);
+      }
+    } else if (data.action === "room_created") {
+      alert(`Salon créé: ${data.name} (ID: ${data.room_id})`);
+      getRooms();
+    } else if (data.action === "rooms_list") {
+      updateRoomsList(data.rooms);
+    } else if (data.action === "room_messages") {
+      clearMessages();
+      data.messages.forEach(msg => {
+        appendMessage(msg.username, msg.message);
+      });
+    } else if (data.error) {
+      alert("Erreur : " + data.error);
+    }
+  };
+
+  socket.onerror = (err) => {
+    console.error("❌ Erreur WebSocket :", err);
+  };
+
+  function sendMessage() {
+    const username = document.getElementById("username").value;
+    const message = document.getElementById("message").value;
+
+    if (!currentRoomId) {
+      alert("Sélectionne un salon avant d'envoyer un message !");
+      return;
+    }
+
+    socket.send(JSON.stringify({
+      action: "send_message",
+      username,
+      message,
+      room_id: currentRoomId
+    }));
+  }
+
+  function createRoom() {
+    const name = document.getElementById("room-name").value;
+    const users = document.getElementById("room-users").value.split(",").map(u => u.trim());
+
+    socket.send(JSON.stringify({
+      action: "create_room",
+      name,
+      users
+    }));
+  }
+
+  function getRooms() {
+    socket.send(JSON.stringify({
+      action: "get_rooms"
+    }));
+  }
+
+  function appendMessage(username, message) {
+    const li = document.createElement("li");
+    li.textContent = `${username} : ${message}`;
+    document.getElementById("chat").appendChild(li);
+  }
+
+  function clearMessages() {
+    document.getElementById("chat").innerHTML = "";
+  }
+
+  function updateRoomsList(rooms) {
+    const ul = document.getElementById("rooms");
+    ul.innerHTML = "";
+    rooms.forEach(room => {
+      const li = document.createElement("li");
+      li.classList.add("room");
+      li.textContent = `${room.name}`;
+      li.onclick = () => {
+        currentRoomId = room._id.$oid || room._id;
+        document.getElementById("current-room").textContent = `Salon sélectionné : ${room.name}`;
+
+        // Supprime l'état "selected" des autres
+        document.querySelectorAll("li.room").forEach(el => el.classList.remove("selected"));
+        li.classList.add("selected");
+
+        console.log("🔁 Chargement messages du salon :", currentRoomId);
+        socket.send(JSON.stringify({
+          action: "get_messages",
+          room_id: currentRoomId
+        }));
+      };
+      ul.appendChild(li);
+    });
+  }
+</script>
+
+</body>
+</html>
