@@ -8,5 +8,5 @@ import tornado.ioloop
 if __name__ == "__main__":
     app = create_app()
     app.listen(8888)
-    print("http://localhost:8888")
+    print("✅ Serveur lancé : http://localhost:8888")
     tornado.ioloop.IOLoop.current().start()

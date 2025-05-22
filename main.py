@@ -1,12 +1,14 @@
-from tornado.web import Application, RequestHandler
+import os
+from tornado.web import Application, StaticFileHandler
 from chat.handler import ChatWebSocketHandler
 
-class MainHandler(RequestHandler):
-    def get(self):
-        self.render("test.html")
-
 def create_app():
+    front_path = "/var/www/html/MicroService/ms-chat/front/dist"
+
     return Application([
-        (r"/", MainHandler),
         (r"/ws/chat", ChatWebSocketHandler),
-    ], template_path="templates")
+        (r"/(.*)", StaticFileHandler, {
+            "path": front_path,
+            "default_filename": "index.html"
+        }),
+    ])

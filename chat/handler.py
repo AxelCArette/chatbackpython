@@ -1,6 +1,6 @@
 from tornado.websocket import WebSocketHandler
 from core.services.message_service import save_message, get_messages_by_room
-from core.services.room_service import save_room, get_all_rooms
+from core.services.room_service import save_room, get_all_rooms, delete_room_by_id
 from utils.format import json_serial
 import json
 
@@ -22,9 +22,15 @@ class ChatWebSocketHandler(WebSocketHandler):
             action = data.get("action")
 
             if action == "send_message":
-                username = data["username"]
-                content = data["message"]
+                username = data.get("username")
+                content = data.get("message")
                 room_id = data.get("room_id", "general")
+
+                if not username or not content:
+                    await self.write_message(json.dumps({
+                        "error": "Username et message requis"
+                    }, default=json_serial))
+                    return
 
                 await save_message(username, content, room_id)
 
@@ -43,7 +49,7 @@ class ChatWebSocketHandler(WebSocketHandler):
 
                 await self.write_message(json.dumps({
                     "action": "room_created",
-                    "room_id": room_id,
+                    "_id": room_id,
                     "name": name,
                     "users": users
                 }, default=json_serial))
@@ -63,6 +69,27 @@ class ChatWebSocketHandler(WebSocketHandler):
                     "room_id": room_id,
                     "messages": messages
                 }, default=json_serial))
+
+            elif action == "delete_room":
+                room_id = data.get("room_id")
+                if not room_id:
+                    await self.write_message(json.dumps({
+                        "error": "room_id requis"
+                    }, default=json_serial))
+                    return
+
+                deleted = await delete_room_by_id(room_id)
+                if deleted:
+                    rooms = await get_all_rooms()
+                    for client in ChatWebSocketHandler.clients:
+                        await client.write_message(json.dumps({
+                            "action": "rooms_list",
+                            "rooms": rooms
+                        }, default=json_serial))
+                else:
+                    await self.write_message(json.dumps({
+                        "error": "Suppression échouée ou salon introuvable"
+                    }, default=json_serial))
 
             else:
                 await self.write_message(json.dumps({

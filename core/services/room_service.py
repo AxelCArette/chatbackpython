@@ -21,3 +21,7 @@ async def get_all_rooms():
         }
         async for doc in cursor
     ]
+
+async def delete_room_by_id(room_id: str):
+    result = await rooms_collection.delete_one({"_id": ObjectId(room_id)})
+    return result.deleted_count
