@@ -10,7 +10,7 @@ def create_app():
     return Application([
         # WebSocket handlers
         (r"/ws/chat", ChatWebSocketHandler),
-        (r"/ws/room", RoomWebSocketHandler),  # si besoin plus tard
+        (r"/ws/rooms", RoomWebSocketHandler),  # ← Ajouter le "s" pour matcher le frontend
 
         # Static files (SPA React/Vite/etc.)
         (r"/(.*)", StaticFileHandler, {

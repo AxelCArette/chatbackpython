@@ -1,3 +1,4 @@
+# room/models/room.py - Version complète
 from datetime import datetime
 from bson import ObjectId
 from adapters.mongo.collections import rooms_collection
@@ -11,10 +12,11 @@ class Room:
 
     def to_dict(self):
         return {
-            "_id": self._id,
+            "_id": str(self._id),  # Convertir ObjectId en string
+            "id": str(self._id),   # Alias pour compatibilité frontend
             "name": self.name,
             "created_by": self.created_by,
-            "created_at": self.created_at
+            "created_at": self.created_at.isoformat() if self.created_at else None  # Convertir datetime
         }
 
     @classmethod
@@ -29,6 +31,11 @@ class Room:
     async def save(self):
         """Sauvegarde la room en base de données"""
         room_data = self.to_dict()
+        # Remettre l'ObjectId pour MongoDB
+        room_data["_id"] = self._id
+        room_data["created_at"] = self.created_at  # Remettre datetime pour MongoDB
+        del room_data["id"]  # Supprimer l'alias
+        
         result = await rooms_collection.insert_one(room_data)
         self._id = result.inserted_id
         return self._id
