@@ -1,3 +1,4 @@
+# room/services/room_service.py - Correction
 from room.models.room import Room
 
 async def create_room_in_db(room_name, created_by=None):
@@ -19,7 +20,8 @@ async def get_all_rooms():
     """
     Récupère toutes les rooms
     """
-    rooms = await Room.find_all()
+    rooms = await Room.find_all()  # ← Cette ligne était correcte
+    # ← FIX: Le problème est ici - on doit convertir les objets Room en dict
     return [room.to_dict() for room in rooms]
 
 async def get_room_by_id(room_id):

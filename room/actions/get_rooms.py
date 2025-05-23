@@ -15,8 +15,7 @@ async def handle_get_rooms(data, ws):
             "type": "room_list",  # ← Changer "action" en "type" pour matcher le frontend
             "rooms": rooms_data
         }
-
-
+        
         await ws.write_message(json.dumps(response))
         
     except Exception as e:

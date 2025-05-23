@@ -2,8 +2,7 @@ import json
 import tornado.websocket
 from room.actions.create_room import handle_create_room
 from room.actions.get_rooms import handle_get_rooms
-from room.actions.delete_room import handle_delete_room  # ← Si tu l’as
-from datetime import datetime
+from room.actions.delete_room import handle_delete_room  # ← Nouveau import
 
 
 class RoomWebSocketHandler(tornado.websocket.WebSocketHandler):
@@ -11,40 +10,31 @@ class RoomWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         RoomWebSocketHandler.clients.add(self)
+        print("[WS Room] Client connecté au gestionnaire de room")
 
     def on_close(self):
-        RoomWebSocketHandler.clients.discard(self)
+        if self in RoomWebSocketHandler.clients:
+            RoomWebSocketHandler.clients.remove(self)
+        print("[WS Room] Client déconnecté du gestionnaire de room")
 
     async def on_message(self, message):
         try:
             data = json.loads(message)
             action = data.get("action")
             
-            print(f"[WS Room] Action reçue: {action}")
+            print(f"[WS Room] Action reçue: {action}")  # Pour debug
 
             if action == "create_room":
-                new_room = await handle_create_room(data, self)
-                if new_room:
-                    # Envoyer confirmation au client actuel
-                    await self.write_message(json.dumps({
-                        "action": "room_created",
-                        "room": new_room
-                    }))
-                    # Broadcast à tous les autres clients
-                    await RoomWebSocketHandler.broadcast_to_all({
-                        "action": "room_created",
-                        "room": new_room
-                    })
+                await handle_create_room(data, self)
             elif action == "get_rooms":
                 await handle_get_rooms(data, self)
-            elif action == "delete_room":
+            elif action == "delete_room":  # ← Nouveau handler
                 await handle_delete_room(data, self)
             else:
                 await self.write_message(json.dumps({
-                    "type": "error",
+                    "type": "error", 
                     "message": "Action inconnue pour les rooms"
                 }))
-
         except json.JSONDecodeError:
             await self.write_message(json.dumps({
                 "type": "error",
@@ -58,10 +48,12 @@ class RoomWebSocketHandler(tornado.websocket.WebSocketHandler):
             }))
 
     def check_origin(self, origin):
+        # Permettre les connexions depuis localhost en développement
         return True
 
     @classmethod
     async def broadcast_to_all(cls, message):
+        """Diffuse un message à tous les clients connectés"""
         if cls.clients:
             for client in cls.clients.copy():
                 try:
