@@ -1,5 +1,3 @@
-# Chargement config + Mongo URI
-
 import os
 from dotenv import load_dotenv
 
